@@ -8,7 +8,7 @@ G = nx.Graph()
 # Configuration
 # ------------------------
 
-n = 5
+n = 4
 threads = 8
 
 # ------------------------
@@ -26,7 +26,7 @@ G.add_edge(4 * n, 1)
 # Chord drawing
 
 # We only allow edges to be drawn between every other vertex so we never have two adjacent chord vertices
-chordVertices = [x for x in range(1, 4 * n + 1) if x % 2 == 1]
+chordVertices = list(range(1, 4 * n + 1, 2))
 
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
@@ -51,7 +51,7 @@ print("Possible graphs: " + str(len(possibleChordSets)))
 print("\nCommencing graph generation.")
 # Generate the actual graphs from the chord sets
 chordGraphs = []
-with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
     futures = []
     for subList in chunks(possibleChordSets, threads):
         futures.append(executor.submit(generate_chord_sets, G=G, possibleChordSets=subList))
@@ -147,7 +147,7 @@ print("\nBeginning graph modification algorithm.")
 # Run the graph identification algorithm
 print("Graphs to compress: ", len(chordGraphs))
 compressedGraphs = []
-with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
     futures = []
     for subList in chunks(chordGraphs,threads):
         futures.append(executor.submit(compress_graphs, givenChordGraphs=subList))
