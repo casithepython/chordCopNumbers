@@ -1,5 +1,3 @@
-import math
-
 import networkx as nx
 import itertools
 import concurrent.futures
