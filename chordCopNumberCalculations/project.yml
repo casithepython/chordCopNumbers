@@ -1,0 +1,12 @@
+environment: {}
+parameters: {}
+packages:
+  - name: calculations
+    environment: {}
+    parameters: {}
+    annotations: {}
+    functions:
+      - name: calculate-cases
+        binary: false
+        main: '__main__.py'
+        runtime: 'python:default'
