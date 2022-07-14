@@ -9,7 +9,7 @@ G = nx.Graph()
 # ------------------------
 
 n = 4
-threads = 4
+threads = 17
 
 # ------------------------
 
@@ -146,6 +146,7 @@ def compress_graphs(givenChordGraphs):
 print("\nBeginning graph modification algorithm.")
 # Run the graph identification algorithm
 print("Graphs to compress: ", len(chordGraphs))
+
 compressedGraphs = []
 with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
     futures = []
