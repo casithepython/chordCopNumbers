@@ -7,15 +7,20 @@ from caseGeneration.isomorphism import isIsomorphicDuplicate
 
 class GraphCruncher(mp.Process):
 
-    def __init__(self, processID):
+    def __init__(self, processID, n):
         super().__init__()
+        self.n = n
         self.uniqueGraphs = []
         self.processID = processID
 
-    def compute_unique_graphs(self, n, chordSetsChunk):
+    def n(self):
+        return self.n
+
+    def compute_unique_graphs(self, queue):
+        chordSetsChunk = queue.get()
         for chordSet in chordSetsChunk:
             # Create and compress graph
-            graph = compress_graph(generate_chordal_graph(n, chordSet))
+            graph = compress_graph(generate_chordal_graph(self.n(), chordSet))
             # Check for isomorphism
             isNew = True
             if self.get_num_unique_graphs() != 0:
