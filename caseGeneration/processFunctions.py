@@ -1,51 +1,60 @@
-import multiprocessing
+import multiprocessing as mp
 
 from caseGeneration.compression import compress_graph
 from caseGeneration.generation import generate_chordal_graph
 from caseGeneration.isomorphism import isIsomorphicDuplicate
 
-def compute_unique_graphs(n,chordSets):
-    counter = 0
-    for chordSet in chordSets:
-        counter += 1
-    print(counter)
-    uniqueGraphs = []
-    for chordSet in chordSets:
-        counter += 1
-        # Create and compress graph
-        graph = compress_graph(generate_chordal_graph(n, chordSet))
-        # Check for isomorphism
-        isNew = True
-        if len(uniqueGraphs) != 0:
-            for uniqueGraph in uniqueGraphs:
-                if isIsomorphicDuplicate(uniqueGraph, graph):
-                    isNew = False
+
+class GraphCruncher(mp.Process):
+
+    def __init__(self, processID):
+        super().__init__()
+        self.uniqueGraphs = []
+        self.processID = processID
+
+    def compute_unique_graphs(self, n, chordSetsChunk):
+        for chordSet in chordSetsChunk:
+            # Create and compress graph
+            graph = compress_graph(generate_chordal_graph(n, chordSet))
+            # Check for isomorphism
+            isNew = True
+            if self.get_num_unique_graphs() != 0:
+                for uniqueGraph in self.get_unique_graphs():
+                    if isIsomorphicDuplicate(uniqueGraph, graph):
+                        isNew = False
+                        break
+            if isNew:
+                self.add_unique_graph(graph)
+
+    def get_unique_graphs(self):
+        return self.uniqueGraphs
+
+    def add_unique_graph(self, graph):
+        self.uniqueGraphs.append(graph)
+
+    def get_num_unique_graphs(self):
+        return len(self.get_unique_graphs())
+
+    def send_unique_graphs(self, queue):
+        queue.put(self.get_unique_graphs())
+        self.terminate()
+
+    def get_new_graphs_and_merge(self, queue):
+        newSet = queue.get()
+        self.add_unique_graphs_without_duplicates(newSet)
+
+    def add_unique_graphs_without_duplicates(self, newUniqueGraphs):
+        # NOTE: this assumes that all graphs in secondUniqueGraphs are non-isomorphic to each other
+        print("First length", self.get_num_unique_graphs(), "Second length", len(newUniqueGraphs))
+        newGraphsNotDuplicates = []
+        for newUniqueGraph in newUniqueGraphs:
+            isUnique = True
+            for oldUniqueGraph in self.get_unique_graphs():
+                if isIsomorphicDuplicate(newUniqueGraph, oldUniqueGraph):
+                    isUnique = False
                     break
-        if isNew:
-            uniqueGraphs.append(graph)
-    return uniqueGraphs
-
-def get_and_merge(iterable):
-    firstSet = next(iterable)
-    if not iterable.empty():
-        secondSet = next(iterable)
-    else:
-        secondSet = []
-    return merge_lists(firstSet,secondSet)
-
-def merge_lists(uniqueGraphs, secondUniqueGraphs):
-    # NOTE: this assumes that all graphs in secondUniqueGraphs are non-isomorphic to each other
-    print("First length", len(uniqueGraphs), "Second length", len(secondUniqueGraphs))
-    newGraphsInNewList = []
-    for newUniqueGraph in secondUniqueGraphs:
-        isUnique = True
-        for oldUniqueGraph in uniqueGraphs:
-            if isIsomorphicDuplicate(newUniqueGraph, oldUniqueGraph):
-                isUnique = False
-                break
-        if isUnique:
-            newGraphsInNewList.append(newUniqueGraph)
-    print("New graphs found in new list", len(newGraphsInNewList))
-    for graph in uniqueGraphs:
-        newGraphsInNewList.append(graph)
-    return newGraphsInNewList
+            if isUnique:
+                newGraphsNotDuplicates.append(newUniqueGraph)
+        print("New graphs found in new list", len(newGraphsNotDuplicates))
+        for graph in newGraphsNotDuplicates:
+            self.add_unique_graph(graph)
