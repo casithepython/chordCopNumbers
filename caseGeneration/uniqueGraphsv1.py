@@ -196,11 +196,7 @@ def main(n, threads):
     # ------------------------
     # Display
     # ------------------------
-    for graph in non_isomorphic:
-        plt.clf()
-        nx.draw_circular(graph)
-        plt.show()
     print(str(len(non_isomorphic)) + " unique graphs exist with " + str(n) + " chords.")
     return {"Number of unique graphs:": len(non_isomorphic)}
 
-main(3,17)
+main(3,9)

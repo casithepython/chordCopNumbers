@@ -14,22 +14,13 @@
 # ------------------------
 # Imports
 # ------------------------
-import gc
 import itertools
 import math
 import multiprocessing
-import multiprocessing as mp
-import random
 
-import matplotlib.pyplot as plt
-import more_itertools as mit
-import networkx as nx
-
-from utility import chunks
-from compression import compress_graph
-from generation import generate_chordal_graph
-from isomorphism import isIsomorphicDuplicate
 from processFunctions import *
+from utility import chunks
+
 
 def init(n, numProcesses):
     # ------------------------
@@ -43,7 +34,7 @@ def init(n, numProcesses):
     possibleChords = iter(itertools.combinations(chordVertices, 2))
     possibleChordSets = iter(itertools.combinations(possibleChords, n))
 
-    numSets = math.comb(2*(n**2)-n, n) # ((2n^2 - n) CHOOSE n) happens to be the working formula
+    numSets = math.comb(2 * (n ** 2) - n, n)  # ((2n^2 - n) CHOOSE n) happens to be the working formula
 
     chunkSize = math.ceil(numSets / numProcesses)
     print("Chunk size: ", chunkSize)
@@ -51,35 +42,61 @@ def init(n, numProcesses):
     chordSetsChunks = iter(chunks(possibleChordSets, chunkSize))
     return chordSetsChunks
 
+
 # ------------------------
 # Creating the processes and assigning lists
 # ------------------------
 
-def generate_unique(n, chordSetsChunks,numProcesses):
-    pool = multiprocessing.Pool(processes=numProcesses)
-    uniqueGraphSetsSet = pool.imap(compute_unique_graphs, zip(itertools.repeat(n),chordSetsChunks))
-    for item in uniqueGraphSetsSet:
-        yield item
-# ------------------------
+def generate_unique(n, chordSetsChunks, numProcesses):
+    processes = []
+    for processIndex in range(numProcesses):
+        newProcess = GraphCruncher(processID=processIndex, n=n)
+        processes.append(newProcess)
+
+    queue = mp.Queue()
+
+    for process in processes:
+        process.start()
+
+    for chunk in chordSetsChunks:
+        queue.put(list(chunk))
+
+    for process in processes:
+        process.compute_unique_graphs(queue)
+
+    for process in processes:
+        print("Chunk", process.get_processID(), "completed, found", process.get_num_unique_graphs(), "unique graphs")
+    gc.collect()
+    return processes
+
+
 # Merging code
 # ------------------------
 
 # Send graphs from half the processes to the other half
 
-def merge_pairs(lock,queue,numProcessesToRun):
-    processes = []
-    manager = multiprocessing.Manager()
-    newQueue = manager.Queue()
-    for processIndex in range(numProcessesToRun):
-        processes.append(multiprocessing.Process(target=get_and_merge,args=(lock,queue,newQueue)))
-    for process in processes:
-        process.start()
-    for process in processes:
-        process.join()
-    print("Completed iteration with " + str(numProcessesToRun) + " processes")
-    return lock, newQueue
+def merge_unique_graph_lists(processes):
+    numProcessesToKeep = len(processes)
+    howOftenToTake = 2
+    counter = 1
+    queue = multiprocessing.Queue()
+    while howOftenToTake < numProcessesToKeep + 1:
+        print("Iteration", counter, " of merging beginning.")
+        for process in processes:
+            if process.get_processID() % howOftenToTake != 0:
+                process.send_unique_graphs(queue)
+                process.join()
+                processes.remove(process)
+        for process in processes:
+            process.get_new_graphs_and_merge(queue)
+        howOftenToTake *= 2
+        gc.collect()
+        print("Iteration", counter, " of merging completed.")
+        counter += 1
+    return processes[0].get_unique_graphs()
 
- # Close sending processes
+
+# Close sending processes
 
 # Merge lists on receiving processes
 
@@ -98,11 +115,8 @@ if __name__ == "__main__":
 
     chordSetsChunks = init(n, numProcesses)
 
-    uniqueSets = generate_unique(n, chordSetsChunks,numProcesses)
-
-    while numProcesses > 1:
-        numProcesses = math.ceil(numProcesses / 2)
-        print("Simplifying with " + str(numProcesses) + ' processes')
-        uniqueSets = get_and_merge(uniqueSets)
-
-    print(len(uniqueSets))
+    processes = generate_unique(n, chordSetsChunks, numProcesses)
+    print("Finished initial graph generation and checking. Commencing merging.")
+    results = merge_unique_graph_lists(processes)
+    print("Completed merging.")
+    print(len(results))

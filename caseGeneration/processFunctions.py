@@ -1,3 +1,4 @@
+import gc
 import multiprocessing as mp
 
 from caseGeneration.compression import compress_graph
@@ -13,14 +14,17 @@ class GraphCruncher(mp.Process):
         self.uniqueGraphs = []
         self.processID = processID
 
-    def n(self):
+    def get_n(self):
         return self.n
+
+    def get_processID(self):
+        return self.processID
 
     def compute_unique_graphs(self, queue):
         chordSetsChunk = queue.get()
         for chordSet in chordSetsChunk:
             # Create and compress graph
-            graph = compress_graph(generate_chordal_graph(self.n(), chordSet))
+            graph = compress_graph(generate_chordal_graph(self.get_n(), chordSet))
             # Check for isomorphism
             isNew = True
             if self.get_num_unique_graphs() != 0:
@@ -30,7 +34,7 @@ class GraphCruncher(mp.Process):
                         break
             if isNew:
                 self.add_unique_graph(graph)
-
+        gc.collect()
     def get_unique_graphs(self):
         return self.uniqueGraphs
 
@@ -42,7 +46,7 @@ class GraphCruncher(mp.Process):
 
     def send_unique_graphs(self, queue):
         queue.put(self.get_unique_graphs())
-        self.terminate()
+
 
     def get_new_graphs_and_merge(self, queue):
         newSet = queue.get()
@@ -50,7 +54,6 @@ class GraphCruncher(mp.Process):
 
     def add_unique_graphs_without_duplicates(self, newUniqueGraphs):
         # NOTE: this assumes that all graphs in secondUniqueGraphs are non-isomorphic to each other
-        print("First length", self.get_num_unique_graphs(), "Second length", len(newUniqueGraphs))
         newGraphsNotDuplicates = []
         for newUniqueGraph in newUniqueGraphs:
             isUnique = True
@@ -60,6 +63,6 @@ class GraphCruncher(mp.Process):
                     break
             if isUnique:
                 newGraphsNotDuplicates.append(newUniqueGraph)
-        print("New graphs found in new list", len(newGraphsNotDuplicates))
         for graph in newGraphsNotDuplicates:
             self.add_unique_graph(graph)
+        gc.collect()
