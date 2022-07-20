@@ -21,20 +21,22 @@ class GraphCruncher(mp.Process):
         return self.processID
 
     def compute_unique_graphs(self, queue):
-        chordSetsChunk = queue.get()
-        for chordSet in chordSetsChunk:
+        chordSetsChunk = queue.get() # Get a chunk of chord sets from the queue
+        for chordSet in chordSetsChunk: # Go through each chord set
             # Create and compress graph
             graph = compress_graph(generate_chordal_graph(self.get_n(), chordSet))
             # Check for isomorphism
             isNew = True
-            if self.get_num_unique_graphs() != 0:
-                for uniqueGraph in self.get_unique_graphs():
-                    if isIsomorphicDuplicate(uniqueGraph, graph):
-                        isNew = False
-                        break
+
+            # If the graph is unique, add it to the list of unique graphs
+            for uniqueGraph in self.get_unique_graphs():
+                if isIsomorphicDuplicate(uniqueGraph, graph):
+                    isNew = False
+                    break
             if isNew:
                 self.add_unique_graph(graph)
         gc.collect()
+
     def get_unique_graphs(self):
         return self.uniqueGraphs
 
@@ -55,7 +57,10 @@ class GraphCruncher(mp.Process):
     def add_unique_graphs_without_duplicates(self, newUniqueGraphs):
         # NOTE: this assumes that all graphs in secondUniqueGraphs are non-isomorphic to each other
         newGraphsNotDuplicates = []
-        for newUniqueGraph in newUniqueGraphs:
+        for newUniqueGraph in newUniqueGraphs: # For each new graph
+            # If it's unique, we add it to the newGraphsNotDuplicates list
+            # We don't add it to the unique graphs immediately, because then
+            # we would be checking new graphs against it when we know they're already distinct.
             isUnique = True
             for oldUniqueGraph in self.get_unique_graphs():
                 if isIsomorphicDuplicate(newUniqueGraph, oldUniqueGraph):
@@ -63,6 +68,8 @@ class GraphCruncher(mp.Process):
                     break
             if isUnique:
                 newGraphsNotDuplicates.append(newUniqueGraph)
+        # Shift over all the newGraphsNotDuplicates to the unique graph list
         for graph in newGraphsNotDuplicates:
             self.add_unique_graph(graph)
+        del newGraphsNotDuplicates
         gc.collect()

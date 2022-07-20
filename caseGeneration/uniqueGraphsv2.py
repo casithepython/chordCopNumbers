@@ -48,6 +48,7 @@ def init(n, numProcesses):
 # ------------------------
 
 def generate_unique(n, chordSetsChunks, numProcesses):
+    # Create the processes
     processes = []
     for processIndex in range(numProcesses):
         newProcess = GraphCruncher(processID=processIndex, n=n)
@@ -55,18 +56,23 @@ def generate_unique(n, chordSetsChunks, numProcesses):
 
     queue = mp.Queue()
 
+    # Start all processes
     for process in processes:
         process.start()
 
+    # Put the chunks in the queue
     for chunk in chordSetsChunks:
         queue.put(list(chunk))
 
+    # Compute the unique graphs
     for process in processes:
         process.compute_unique_graphs(queue)
 
+    # Bit of user output to make sure everything is A-OK
     for process in processes:
         print("Chunk", process.get_processID(), "completed, found", process.get_num_unique_graphs(), "unique graphs")
-    gc.collect()
+    gc.collect() # Cleanup
+
     return processes
 
 
@@ -77,22 +83,34 @@ def generate_unique(n, chordSetsChunks, numProcesses):
 
 def merge_unique_graph_lists(processes):
     numProcessesToKeep = len(processes)
-    howOftenToTake = 2
-    counter = 1
+    howOftenToTake = 2  # If this is 2, we take every other, and so on and so forth
+
+    counter = 1  # This is just so the user knows that the program is working
+
     queue = multiprocessing.Queue()
-    while howOftenToTake < numProcessesToKeep + 1:
+
+    while howOftenToTake < numProcessesToKeep + 1:  # They are equal in the last iteration
         print("Iteration", counter, " of merging beginning.")
-        for process in processes:
-            if process.get_processID() % howOftenToTake != 0:
+
+        # For every other process
+        # Send its graphs into the queue, join it, and remove it from the list
+        for process in processes:  # For some reason, using [::2] is slower than using modulo. idk
+            if process.get_processID() % howOftenToTake != 0:  # Select every other (using process ID)
                 process.send_unique_graphs(queue)
                 process.join()
                 processes.remove(process)
+
+        # For every remaining process
+        # Take a new set of graphs from the queue and merge them with the existing set in the process
         for process in processes:
             process.get_new_graphs_and_merge(queue)
+
         howOftenToTake *= 2
         gc.collect()
+
         print("Iteration", counter, " of merging completed.")
         counter += 1
+
     return processes[0].get_unique_graphs()
 
 
@@ -113,10 +131,14 @@ if __name__ == "__main__":
     numProcesses = mp.cpu_count()
     print("Processes: ", numProcesses)
 
+    # Create the chords
     chordSetsChunks = init(n, numProcesses)
 
+    # Generate the unique graphs lists
     processes = generate_unique(n, chordSetsChunks, numProcesses)
     print("Finished initial graph generation and checking. Commencing merging.")
+
+    # Merge all the unique graph lists
     results = merge_unique_graph_lists(processes)
     print("Completed merging.")
     print(len(results))
