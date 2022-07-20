@@ -20,7 +20,7 @@ import multiprocessing
 import os
 
 from processFunctions import *
-from utility import chunks
+from customUtility import chunks
 
 
 def init(n, numProcesses):
@@ -129,6 +129,7 @@ if __name__ == "__main__":
     # Configuration
     # ------------------------
     for n in range(2,7):
+        print("\nInitializing for n:",n)
         numProcesses = mp.cpu_count()
         print("Processes: ", numProcesses)
 
