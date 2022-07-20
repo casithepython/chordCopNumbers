@@ -17,6 +17,7 @@
 import itertools
 import math
 import multiprocessing
+import os
 
 from processFunctions import *
 from utility import chunks
@@ -127,18 +128,29 @@ if __name__ == "__main__":
     # ------------------------
     # Configuration
     # ------------------------
-    n = 3
-    numProcesses = mp.cpu_count()
-    print("Processes: ", numProcesses)
+    for n in range(2,7):
+        numProcesses = mp.cpu_count()
+        print("Processes: ", numProcesses)
 
-    # Create the chords
-    chordSetsChunks = init(n, numProcesses)
+        # Create the chords
+        chordSetsChunks = init(n, numProcesses)
 
-    # Generate the unique graphs lists
-    processes = generate_unique(n, chordSetsChunks, numProcesses)
-    print("Finished initial graph generation and checking. Commencing merging.")
+        # Generate the unique graphs lists
+        processes = generate_unique(n, chordSetsChunks, numProcesses)
+        print("Finished initial graph generation and checking. Commencing merging.")
 
-    # Merge all the unique graph lists
-    results = merge_unique_graph_lists(processes)
-    print("Completed merging.")
-    print(len(results))
+        # Merge all the unique graph lists
+        results = merge_unique_graph_lists(processes)
+        print("Completed merging.")
+        print("For n =", n, ",",len(results))
+
+        resultText = "For n = " + str(n) + ", the number of cases is " + str(len(results)) + "\n"
+        resultEdges = "\n".join([';'.join([str(edge[0])+","+str(edge[1]) for edge in G.edges()]) for G in results])
+        print(resultEdges)
+        resultText += resultEdges
+        tempFile = open(str(n) + "-chordal-graphs.txt","w")
+        tempFile.write(resultText)
+        tempFile.flush()
+        os.fsync(tempFile.fileno())
+        del resultText, resultEdges, results
+        gc.collect()

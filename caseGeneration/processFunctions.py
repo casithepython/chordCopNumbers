@@ -1,9 +1,9 @@
 import gc
 import multiprocessing as mp
 
-from caseGeneration.compression import compress_graph
-from caseGeneration.generation import generate_chordal_graph
-from caseGeneration.isomorphism import isIsomorphicDuplicate
+from compression import compress_graph
+from generation import generate_chordal_graph
+from isomorphism import isIsomorphicDuplicate
 
 
 class GraphCruncher(mp.Process):
